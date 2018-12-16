@@ -1,0 +1,53 @@
+package com.company.flow.workflow.drools.rules
+
+import com.company.flow.workflow.model.IncomingRequest;
+import com.company.flow.workflow.model.WFKeywordMatchAnalysisResults;
+import com.company.flow.workflow.model.ShortlistedWorkflowsModel;
+import org.drools.core.util.StringUtils;
+import java.util.HashSet;
+import java.util.Date;
+
+global com.company.flow.workflow.helpers.WorkflowKeyWordMatchAnalyser keywordMatchAnalyser;
+global com.company.flow.workflow.model.SelectedWorkflow selectedWorkflow;
+
+
+declare Person
+    modelList : HashSet
+end
+
+rule "Choose a Workflow based on Keywords"
+salience 3001
+dialect  "java"
+    when
+         $incomingRequest: IncomingRequest($incomingReqSummary : summary && !StringUtils.isEmpty($incomingReqSummary))
+         $shortListedWorkflowModel: ShortlistedWorkflowsModel() from keywordMatchAnalyser.analyseKeywordMatchCriteria($incomingReqSummary)
+    then
+        Person person = new Person();
+        person.setModelList($shortListedWorkflowModel.getShortlistedWorkflows());
+        insert(person);
+        System.out.println("DRL-SHORTLIST Then with Salience: 3001"+$shortListedWorkflowModel.getShortlistedWorkflows());
+	end
+
+
+
+rule "Choose LOGIN_WF as WF"
+salience 2998
+activation-group "salientUniqueWFTrigger"
+dialect  "java"
+    when
+        person : Person(modelList contains "LOGIN_WF")
+    then
+       System.out.println("DRL-SALIENT Then LOGIN_WF with Salience: 2999:");
+       selectedWorkflow.setSelectedWorkflowName("LOGIN_WF");
+    end
+
+
+rule "Choose EBAY_WF as WF"
+salience 2999
+activation-group "salientUniqueWFTrigger"
+    when
+        person : Person(modelList contains "EBAY_WF")
+    then
+    	System.out.println("DRL-SALIENT Then LOGIN_WF with Salience: 2998:");
+        selectedWorkflow.setSelectedWorkflowName("EBAY_WF");
+	end
